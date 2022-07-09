@@ -1,0 +1,49 @@
+{
+  "num_samples": 1,
+  "question_info": [
+    {
+      "type": "bubble",
+      "data": {
+        "question_name": "Loudness validation",
+        "choice_list": ["Speaking", "Shouting", "Screaming"],
+        "required": true
+      }
+    },
+    {
+      "type": "bubble",
+      "data": {
+        "question_name": "Distress validation",
+        "choice_list": ["Distressed", "Not distressed"],
+        "required": true
+      }
+    },
+    {
+      "type": "slide",
+      "data": {
+        "question_name": "How difficult was it to assess loudness?",
+        "left_label": "easy",
+        "right_label": "difficult",
+        "num_ticks": 5,
+        "required": true
+      }
+    },
+    {
+      "type": "slide",
+      "data": {
+        "question_name": "How difficult was it to assess distress?",
+        "left_label": "easy",
+        "right_label": "difficult",
+        "num_ticks": 5,
+        "required": true
+      }
+    },
+    {
+      "type": "bubble",
+      "data": {
+        "question_name": "Is there background noise present?",
+        "choice_list": ["Yes", "No"],
+        "required": true
+      }
+    }
+  ]
+}
