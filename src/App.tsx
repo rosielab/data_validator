@@ -2,13 +2,15 @@ import React, { useEffect } from 'react';
 import './App.css';
 import BubbleQuestion from "./components/bubble"
 import SliderQuestion from "./components/slider"
-import { Grid, Button, Typography } from '@mui/material';
+import { Grid, Button, Typography, TextField } from '@mui/material';
 import AudioCard from './audiocard';
 import questionInfo from "./config.json";
 
 function App() {
 
   const num_samples = questionInfo["num_samples"];
+  var i: number = 0;
+
   // @ts-ignore
   const sample_list: Array<Number> = [...Array(num_samples).keys()];
 
@@ -22,9 +24,99 @@ function App() {
       return(false)
   };
 
+  const getAudiolist = async (validatorid: number) => {
+    try{
+      const response = await fetch(`http://localhost:4000/init?${validatorid}`);
+      const audiolist = await response.json();
+      return audiolist;
+    }catch (error) {
+      return error;
+    }
+  }
+
+  const getAudioInfo = async (audioid: number) => {
+    try{
+      const response = await fetch(`http://localhost:4000/audio?${audioid}`);
+      const audiolist = await response.json();
+      return audiolist;
+    }catch (error) {
+      return error;
+    }
+  }
+
+  const sendId = async (validatorID: number) => {
+    try{
+      const response = await fetch('https://localhost:4000/user', {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(validatorID),
+      })
+      const data = await response.json();
+      const audiolist = getAudiolist(validatorID)
+      return [data, audiolist];
+    } catch (error) {
+      return error;
+    }
+  }
+
+  const sendResetPage = async (responses: object, validatorID: number)  => {
+    const alldata = {
+      responses: responses,
+      validatorID: validatorID
+    }
+    try{
+      const response = await fetch('https://localhost:4000/responses', {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(alldata),
+      })
+      const data = await response.json();
+      setAnswersToQuestions(
+        tempanswers
+      )
+      var nextId = audiolist[i+1]
+      getAudioInfo(nextId)
+      return data;
+    } catch (error) {
+      return error;
+    }
+  }
+
   const [answersToQuestions, setAnswersToQuestions] = React.useState({
     "question0": "No"
   });
+
+  //how do I tpe this to validate??
+  const [validatorID, setValidatorId] = React.useState();
+
+  useEffect(() => {
+    const tempanswers: {[key: string]: number | string | Array<string>} = {}
+    // Iterate through JSON and add keys to object that map to IDs
+    questionInfo["question_info"].forEach(
+      (question, idx) => {
+        if (
+            question["type"] === "bubble"
+            || question["type"] === "ranking"
+            || question["type"] === "shorttext"
+            || question["type"] === "longtext"
+        ) {
+          tempanswers[`question${idx+1}`] = ""
+        } else if (question["type"] === "slide") {
+          tempanswers[`question${idx+1}`] = 0
+        } else if (question["type"] === "checkbox") {
+          tempanswers[`question${idx+1}`] = []
+        }
+      }
+    )
+    setAnswersToQuestions({
+      ...answersToQuestions,
+      ...tempanswers
+    })
+  }, []);
 
   useEffect(() => {
     const tempanswers: {[key: string]: number | string | Array<string>} = {}
@@ -62,6 +154,19 @@ function App() {
 
   return (
     <Grid>
+      <TextField
+        id="standard-helperText"
+        label="validatorid"
+        required
+        value = {validatorID}
+        onChange={(event) => setValidatorId({event.target.value})}
+      />
+      <Button
+        size='large'
+        variant='contained'
+        className='text-white bg-blue-500 m-3'
+        onClick={sendId(validatorID)}>Submit
+      </Button>
       {sample_list.map((idx) =>
         // @ts-ignore
         <Grid key={idx} item xs={12}>
@@ -179,16 +284,7 @@ function App() {
           variant="contained"
           sx={{ margin: 1 }}
           disabled={isSelected()}
-          //onClick={async (e) => {
-          //  await handleSelection(
-          //      (e.target as HTMLInputElement).value
-          //  );
-          //  focusOnNext();
-          //}}
-          onClick={async (e) => {
-              console.log(answersToQuestions)
-            }
-          }
+          onClick={sendResetPage(answersToQuestions, validatorID)}}
         >
           Submit
         </Button>

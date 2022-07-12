@@ -1,5 +1,12 @@
 {
   "num_samples": 1,
+  "questions":[
+    "loudness",
+    "distress",
+    "loudness_diff",
+    "distress_diff",
+    "background"
+  ],
   "question_info": [
     {
       "type": "bubble",
