@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { RefObject, useEffect } from 'react';
 import './App.css';
 import BubbleQuestion from "./components/bubble"
 import SliderQuestion from "./components/slider"
@@ -9,10 +9,7 @@ import questionInfo from "./config.json";
 function App() {
 
   const num_samples = questionInfo["num_samples"];
-  var i: number = 0;
-
-  // @ts-ignore
-  const sample_list: Array<Number> = [...Array(num_samples).keys()];
+  let tracking: number = 0;
 
   const isSelected = () => {
       for (var key in answersToQuestions){
@@ -24,8 +21,9 @@ function App() {
       return(false)
   };
 
-  const getAudiolist = async (validatorid: number) => {
+  const getAudioList = async (validatorid: Number) => {
     try{
+      console.log(validatorid);
       const response = await fetch(`http://localhost:4000/init?${validatorid}`);
       const audiolist = await response.json();
       return audiolist;
@@ -34,7 +32,7 @@ function App() {
     }
   }
 
-  const getAudioInfo = async (audioid: number) => {
+  const getAudioInfo = async (audioid: Number) => {
     try{
       const response = await fetch(`http://localhost:4000/audio?${audioid}`);
       const audiolist = await response.json();
@@ -44,7 +42,7 @@ function App() {
     }
   }
 
-  const sendId = async (validatorID: number) => {
+  const sendId = async (validatorID: Number) => {
     try{
       const response = await fetch('https://localhost:4000/user', {
         method: 'POST', 
@@ -54,44 +52,47 @@ function App() {
         body: JSON.stringify(validatorID),
       })
       const data = await response.json();
-      const audiolist = getAudiolist(validatorID)
-      return [data, audiolist];
-    } catch (error) {
-      return error;
-    }
-  }
-
-  const sendResetPage = async (responses: object, validatorID: number)  => {
-    const alldata = {
-      responses: responses,
-      validatorID: validatorID
-    }
-    try{
-      const response = await fetch('https://localhost:4000/responses', {
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(alldata),
-      })
-      const data = await response.json();
-      setAnswersToQuestions(
-        tempanswers
-      )
-      var nextId = audiolist[i+1]
-      getAudioInfo(nextId)
       return data;
     } catch (error) {
       return error;
     }
   }
 
+
+  //const sendResetPage = async (responses: object, validatorID: number)  => {
+  //  const alldata = {
+  //    responses: responses,
+  //    validatorID: validatorID
+  //  }
+  //  try{
+  //    const response = await fetch('https://localhost:4000/responses', {
+  //      method: 'POST', 
+  //      headers: {
+  //        'Content-Type': 'application/json',
+  //      },
+  //      body: JSON.stringify(alldata),
+  //    })
+  //    const data = await response.json();
+  //    setAnswersToQuestions(
+  //      tempanswers
+  //    )
+  //    var nextId = audiolist[i+1]
+  //    return data;
+  //  } catch (error) {
+  //    return error;
+  //  }
+  //}
+
   const [answersToQuestions, setAnswersToQuestions] = React.useState({
     "question0": "No"
   });
 
   //how do I tpe this to validate??
-  const [validatorID, setValidatorId] = React.useState();
+  const [validatorID, setValidatorId] = React.useState(0);
+
+  const [textValue, setTextValue] = React.useState('');
+
+  const [audioListState, setAudioList] = React.useState([[]] as Array<Array<Number>>);
 
   useEffect(() => {
     const tempanswers: {[key: string]: number | string | Array<string>} = {}
@@ -152,38 +153,70 @@ function App() {
     });
   };
 
-  return (
-    <Grid>
-      <TextField
-        id="standard-helperText"
-        label="validatorid"
-        required
-        value = {validatorID}
-        onChange={(event) => setValidatorId({event.target.value})}
-      />
-      <Button
-        size='large'
-        variant='contained'
-        className='text-white bg-blue-500 m-3'
-        onClick={sendId(validatorID)}>Submit
-      </Button>
-      {sample_list.map((idx) =>
-        // @ts-ignore
-        <Grid key={idx} item xs={12}>
-          <AudioCard
-            title={`Audio Sample ${Number(idx) + 1}`}
-            //SET UP API CALL TO LOAD THE AUDIO
-            soundfile={"http://localhost:3000/data/recording.m4a"}
+  if (!validatorID) {
+    return (
+      <Grid container padding = {2}>
+        <Grid item>
+          <TextField
+            id="standard-helperText"
+            label="validatorid"
+            required
+            value = {textValue}
+            onChange = {(event) => setTextValue(event.target.value)}
           />
         </Grid>
-      )}
-      {
-        //Call to load what to display here
-      }
+        <Grid item padding = {2}>
+          <Button
+            size='large'
+            variant='contained'
+            className='text-white bg-blue-500 m-3'
+            onClick={async () => {
+              const insideValidatorId: Number = Number(textValue);
+              setValidatorId(Number(insideValidatorId));
+              await sendId(insideValidatorId);
+              const audioObject = await getAudioList(insideValidatorId);
+              const audioList: Array<Array<Number>> = [];
+              let tempArray: Array<object> = [];
+              audioObject.forEach((obj: object) => {
+                if (tempArray.length === num_samples) {
+                  audioList.push(tempArray as Array<Number>);
+                  tempArray = [];
+                }
+                tempArray.push(obj);
+              });
+              if (tempArray.length) {
+                audioList.push(tempArray as Array<Number>);
+              }
+              setAudioList(audioList);
+              console.log(audioList)
+            }}>
+              Submit
+          </Button>
+        </Grid>
+      </Grid>
+    );
+  }
+  return (
+    <Grid>
+      <>
+        {
+          audioListState[tracking].map( async (audioid: Number) => {
+              const audioInfo = await getAudioInfo(audioid);
+              return (
+                <Grid item xs={12}>
+                  <AudioCard
+                    title={`Audio Set ${tracking}`}
+                    soundfile={`http://localhost:3000/${audioInfo['filename']}`}
+                  />
+                </Grid>
+              )
+            })
+        }
+      </>
       <Typography
         align="center"
       >
-          This will be the script once the backend is up
+          {audioInfo && audioInfo['script']}
       </Typography>
       <Grid
         container
@@ -284,7 +317,7 @@ function App() {
           variant="contained"
           sx={{ margin: 1 }}
           disabled={isSelected()}
-          onClick={sendResetPage(answersToQuestions, validatorID)}}
+          //onClick={sendResetPage(answersToQuestions, validatorID)}}
         >
           Submit
         </Button>
