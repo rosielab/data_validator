@@ -3,7 +3,7 @@
 
 export interface Bubble {
     question_name: string;
-    choice_list: Array<string>;
+    choice_list: Array<object>;
     required: boolean;
     handleChange(event: React.ChangeEvent<HTMLInputElement>, input: string): void;
     value: string;
@@ -12,7 +12,7 @@ export interface Bubble {
 
 export interface Checkbox {
     question_name: string;
-    choice_list: Array<string>;
+    choice_list: Array<object>;
     required: boolean;
     handleChange(event: React.ChangeEvent<HTMLInputElement>, input: string): void;
 }

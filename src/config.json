@@ -12,7 +12,7 @@
       "type": "bubble",
       "data": {
         "question_name": "Loudness validation",
-        "choice_list": ["Speaking", "Shouting", "Screaming"],
+        "choice_list": [{"Speaking": 1}, {"Shouting": 2}, {"Screaming": 3}],
         "required": true
       }
     },
@@ -20,7 +20,7 @@
       "type": "bubble",
       "data": {
         "question_name": "Distress validation",
-        "choice_list": ["Distressed", "Not distressed"],
+        "choice_list": [{"Distressed": true}, {"Not distressed": false}],
         "required": true
       }
     },
@@ -48,7 +48,7 @@
       "type": "bubble",
       "data": {
         "question_name": "Is there background noise present?",
-        "choice_list": ["Yes", "No"],
+        "choice_list": [{"Yes": true}, {"No": false}],
         "required": true
       }
     }

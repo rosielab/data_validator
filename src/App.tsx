@@ -1,20 +1,44 @@
-import React, { RefObject, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import './App.css';
 import BubbleQuestion from "./components/bubble"
 import SliderQuestion from "./components/slider"
 import { Grid, Button, Typography, TextField } from '@mui/material';
-import AudioCard from './audiocard';
+import AudioCard from './components/audiocard';
 import questionInfo from "./config.json";
 
 function App() {
 
   const num_samples = questionInfo["num_samples"];
-  let tracking: number = 0;
+
+  const initQuestions = () => {
+    const tempanswers: {[key: string]: number | string | Array<string>} = {}
+    // Iterate through JSON and add keys to object that map to IDs
+    questionInfo["question_info"].forEach(
+      (question, idx) => {
+        if (
+            question["type"] === "bubble"
+            || question["type"] === "ranking"
+            || question["type"] === "shorttext"
+            || question["type"] === "longtext"
+        ) {
+          tempanswers[`question${idx+1}`] = ""
+        } else if (question["type"] === "slide") {
+          tempanswers[`question${idx+1}`] = 0
+        } else if (question["type"] === "checkbox") {
+          tempanswers[`question${idx+1}`] = []
+        }
+      }
+    )
+    setAnswersToQuestions({
+      question0:'false',
+      ...tempanswers
+    })
+  };
 
   const isSelected = () => {
       for (var key in answersToQuestions){
-        // @ts-ignore ????????
-        if (answersToQuestions["question0"] === "Yes" & (answersToQuestions[key] === "" || answersToQuestions[key] === [] || answersToQuestions[key] === 0)) {
+        // @ts-ignore
+        if (answersToQuestions["question0"] == 'true' && (answersToQuestions[key] === "" || answersToQuestions[key] === [] || answersToQuestions[key] === 0)) {
           return(true)
         }
       }
@@ -23,8 +47,7 @@ function App() {
 
   const getAudioList = async (validatorid: Number) => {
     try{
-      console.log(validatorid);
-      const response = await fetch(`http://localhost:4000/init?${validatorid}`);
+      const response = await fetch(`http://localhost:4000/init?validatorid=${validatorid}`);
       const audiolist = await response.json();
       return audiolist;
     }catch (error) {
@@ -34,7 +57,7 @@ function App() {
 
   const getAudioInfo = async (audioid: Number) => {
     try{
-      const response = await fetch(`http://localhost:4000/audio?${audioid}`);
+      const response = await fetch(`http://localhost:4000/audio?audioid=${audioid}`);
       const audiolist = await response.json();
       return audiolist;
     }catch (error) {
@@ -42,14 +65,31 @@ function App() {
     }
   }
 
+  const getAudioFiles = async (audiolist: Array<number>) => {
+    const audioFiles: Array<Blob> = [];
+    for (const audioitem of audiolist) {
+      try{
+        //@ts-ignore
+        const response = await fetch(`http://localhost:4000/file?path=${audioitem['file_name']}`);
+        const audioblob = await response.blob();
+        audioFiles.push(audioblob);
+      }catch (error) {
+        return error;
+      }
+    }
+    return audioFiles;
+  }
+
   const sendId = async (validatorID: Number) => {
     try{
-      const response = await fetch('https://localhost:4000/user', {
+      const response = await fetch('http://localhost:4000/user', {
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(validatorID),
+        body: JSON.stringify({
+          validatorID,
+        }),
       })
       const data = await response.json();
       return data;
@@ -59,90 +99,49 @@ function App() {
   }
 
 
-  //const sendResetPage = async (responses: object, validatorID: number)  => {
-  //  const alldata = {
-  //    responses: responses,
-  //    validatorID: validatorID
-  //  }
-  //  try{
-  //    const response = await fetch('https://localhost:4000/responses', {
-  //      method: 'POST', 
-  //      headers: {
-  //        'Content-Type': 'application/json',
-  //      },
-  //      body: JSON.stringify(alldata),
-  //    })
-  //    const data = await response.json();
-  //    setAnswersToQuestions(
-  //      tempanswers
-  //    )
-  //    var nextId = audiolist[i+1]
-  //    return data;
-  //  } catch (error) {
-  //    return error;
-  //  }
-  //}
+  const sendResponse= async (responses: Array<any>)  => {
+    try{
+      const response = await fetch('http://localhost:4000/responses', {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          responses
+        }),
+      })
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return error;
+    }
+  }
 
   const [answersToQuestions, setAnswersToQuestions] = React.useState({
-    "question0": "No"
+    "question0": ""
   });
 
-  //how do I tpe this to validate??
   const [validatorID, setValidatorId] = React.useState(0);
 
   const [textValue, setTextValue] = React.useState('');
 
-  const [audioListState, setAudioList] = React.useState([[]] as Array<Array<Number>>);
+  const [audioListState, setAudioList] = React.useState([[]] as Array<Array<object>>);
+
+  const [tracking, setTracking] = React.useState(0 as number);
+
+  const [audioFiles, setAudioFiles] = React.useState([] as Array<Blob>);
 
   useEffect(() => {
-    const tempanswers: {[key: string]: number | string | Array<string>} = {}
-    // Iterate through JSON and add keys to object that map to IDs
-    questionInfo["question_info"].forEach(
-      (question, idx) => {
-        if (
-            question["type"] === "bubble"
-            || question["type"] === "ranking"
-            || question["type"] === "shorttext"
-            || question["type"] === "longtext"
-        ) {
-          tempanswers[`question${idx+1}`] = ""
-        } else if (question["type"] === "slide") {
-          tempanswers[`question${idx+1}`] = 0
-        } else if (question["type"] === "checkbox") {
-          tempanswers[`question${idx+1}`] = []
-        }
-      }
-    )
-    setAnswersToQuestions({
-      ...answersToQuestions,
-      ...tempanswers
-    })
+    initQuestions();
   }, []);
 
   useEffect(() => {
-    const tempanswers: {[key: string]: number | string | Array<string>} = {}
-    // Iterate through JSON and add keys to object that map to IDs
-    questionInfo["question_info"].forEach(
-      (question, idx) => {
-        if (
-            question["type"] === "bubble"
-            || question["type"] === "ranking"
-            || question["type"] === "shorttext"
-            || question["type"] === "longtext"
-        ) {
-          tempanswers[`question${idx+1}`] = ""
-        } else if (question["type"] === "slide") {
-          tempanswers[`question${idx+1}`] = 0
-        } else if (question["type"] === "checkbox") {
-          tempanswers[`question${idx+1}`] = []
-        }
-      }
-    )
-    setAnswersToQuestions({
-      ...answersToQuestions,
-      ...tempanswers
-    })
-  }, []);
+    //@ts-ignore
+    getAudioFiles(audioListState[tracking]).then(audioFiles => {
+      //@ts-ignore
+      setAudioFiles(audioFiles);
+    });
+  }, [tracking]);
 
   const handleChangeToAnswerToQuestions = (event: React.ChangeEvent<HTMLInputElement> | Event, idToModify: string) => {
     setAnswersToQuestions({
@@ -175,20 +174,30 @@ function App() {
               setValidatorId(Number(insideValidatorId));
               await sendId(insideValidatorId);
               const audioObject = await getAudioList(insideValidatorId);
-              const audioList: Array<Array<Number>> = [];
+              const audioList: Array<Array<object>> = [];
               let tempArray: Array<object> = [];
-              audioObject.forEach((obj: object) => {
+              for (const obj of audioObject ) {
+                // @ts-ignore
+                let tempAudioInfo = await getAudioInfo(obj['id']);
                 if (tempArray.length === num_samples) {
-                  audioList.push(tempArray as Array<Number>);
+                  audioList.push(tempArray);
                   tempArray = [];
                 }
-                tempArray.push(obj);
-              });
+                tempArray.push(tempAudioInfo[0]);
+              }
               if (tempArray.length) {
                 audioList.push(tempArray as Array<Number>);
               }
-              setAudioList(audioList);
-              console.log(audioList)
+              if (audioList.length) {
+                setAudioList(audioList);
+                //@ts-ignore
+                const audioFileList = await getAudioFiles(audioList[tracking]);
+                //@ts-ignore
+                setAudioFiles(audioFileList);
+              } else {
+                // the validator has finished all files
+                setAudioList([]);
+              }
             }}>
               Submit
           </Button>
@@ -196,134 +205,165 @@ function App() {
       </Grid>
     );
   }
-  return (
-    <Grid>
-      <>
+  if (!audioListState.length) {
+    return (
+      <div>
+        You have completed your audio validation!
+      </div>
+    );
+  }
+  else if (audioFiles.length){
+    return (
+      // @ts-ignore
+      <Grid>
         {
-          audioListState[tracking].map( async (audioid: Number) => {
-              const audioInfo = await getAudioInfo(audioid);
-              return (
-                <Grid item xs={12}>
-                  <AudioCard
-                    title={`Audio Set ${tracking}`}
-                    soundfile={`http://localhost:3000/${audioInfo['filename']}`}
-                  />
-                </Grid>
-              )
-            })
-        }
-      </>
-      <Typography
-        align="center"
-      >
-          {audioInfo && audioInfo['script']}
-      </Typography>
-      <Grid
-        container
-        direction="column"
-        alignItems="center"
-        justifyContent="center"
-        style={{ minHeight: '50vh' }}
-      >
-        <Grid item>
-        <BubbleQuestion
-          question_name={"Does the audio match the script above?"}
-          choice_list={["Yes","No"]}
-          required={true}
-          // @ts-ignore
-          value={answersToQuestions[`question0`]}
-          question_id={`question0`}
-          handleChange={(event) => {handleChangeToAnswerToQuestions(event, "question0")}}
-        />
-        </Grid>
-        {
-          answersToQuestions['question0'] === 'Yes' && questionInfo["question_info"].map((question, idx) => {
-            if (question["type"] === "bubble") {
-              return(
-                <Grid 
-                  item
+          audioListState[tracking].map((audioelem: object, idx) => {
+            return(
+              <Grid item xs={12} key={idx}>
+                <AudioCard
+                  title={`Audio Set ${idx}`}
+                  //@ts-ignore
+                  soundfile={audioFiles[idx]}
+                />
+                <Typography
+                  align="center"
                   key={idx}
-                >
-                  <BubbleQuestion
-                    key={idx}
-                    question_name={question["data"]["question_name"]}
-                    choice_list={question["data"]["choice_list"] || []}
-                    required={question["data"]["required"]}
-                    // @ts-ignore
-                    value={answersToQuestions[`question${idx+1}`]}
-                    question_id={`question${idx+1}`}
-                    handleChange={(event) => {handleChangeToAnswerToQuestions(event, `question${idx+1}`)}}
-                  />
-                </Grid>
-              )
-            } else if (question["type"] === "slide") {
-              return(
-                <Grid
-                  item
-                  key={idx}
-                >
-                  <SliderQuestion
-                    key={idx}
-                    question_name={question["data"]["question_name"]}
-                    left_label={question["data"]["left_label"] || ""}
-                    right_label={question["data"]["right_label"] || ""}
-                    num_ticks={question["data"]["num_ticks"] || 0} 
-                    required={question["data"]["required"]}
-                    // @ts-ignore
-                    value={answersToQuestions[`question${idx+1}`]}
-                    question_id={`question${idx+1}`}
-                    handleChange={(event) => {handleChangeToAnswerToQuestions(event, `question${idx+1}`)}}
-                  />
-                </Grid>
-              )
-            }  else if (question["type"] === "checkbox") {
-              return(
-                <Grid item>
-                  {
-                    //component needs to be created
-                  }
-                </Grid>
-              )
-            }  else if (question["type"] === "shorttext") {
-              return(
-                <Grid item>
-                  {
-                    //component needs to be created
-                  }
-                </Grid>
-              )
-            } else if (question["type"] === "longtext") {
-              return(
-                <Grid item>
-                  {
-                    //component needs to be created
-                  }
-                </Grid>
-              )
-            } else if (question["type"] === "ranking") {
-              return(
-                <Grid item>
-                  {
-                    //component needs to be created
-                  }
-                </Grid>
-              )
-            }
-            return null;
+                  >
+                    {
+                      //@ts-ignore
+                      audioelem['script']
+                    }
+                </Typography>
+              </Grid>
+            )
           })
         }
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ margin: 1 }}
-          disabled={isSelected()}
-          //onClick={sendResetPage(answersToQuestions, validatorID)}}
+        <Grid
+          container
+          direction="column"
+          alignItems="center"
+          justifyContent="center"
+          style={{ minHeight: '50vh' }}
         >
-          Submit
-        </Button>
+          <Grid item>
+          <BubbleQuestion
+            question_name={"Does the audio match the script above?"}
+            choice_list={[{"Yes":true},{"No":false}]}
+            required={true}
+            // @ts-ignore
+            value={answersToQuestions[`question0`]}
+            question_id={`question0`}
+            handleChange={(event) => {handleChangeToAnswerToQuestions(event, "question0")}}
+          />
+          </Grid>
+          {
+            answersToQuestions['question0'] == 'true' && questionInfo["question_info"].map((question, idx) => {
+              if (question["type"] === "bubble") {
+                return(
+                  <Grid 
+                    item
+                    key={idx}
+                  >
+                    <BubbleQuestion
+                      key={idx}
+                      question_name={question["data"]["question_name"]}
+                      // @ts-ignore
+                      choice_list={question["data"]["choice_list"] || []}
+                      required={question["data"]["required"]}
+                      // @ts-ignore
+                      value={answersToQuestions[`question${idx+1}`]}
+                      question_id={`question${idx+1}`}
+                      handleChange={(event) => {handleChangeToAnswerToQuestions(event, `question${idx+1}`)}}
+                    />
+                  </Grid>
+                )
+              } else if (question["type"] === "slide") {
+                return(
+                  <Grid
+                    item
+                    key={idx}
+                  >
+                    <SliderQuestion
+                      key={idx}
+                      question_name={question["data"]["question_name"]}
+                      left_label={question["data"]["left_label"] || ""}
+                      right_label={question["data"]["right_label"] || ""}
+                      num_ticks={question["data"]["num_ticks"] || 0} 
+                      required={question["data"]["required"]}
+                      // @ts-ignore
+                      value={answersToQuestions[`question${idx+1}`]}
+                      question_id={`question${idx+1}`}
+                      handleChange={(event) => {handleChangeToAnswerToQuestions(event, `question${idx+1}`)}}
+                    />
+                  </Grid>
+                )
+              }  else if (question["type"] === "checkbox") {
+                return(
+                  <Grid item>
+                    {
+                      //component needs to be created
+                    }
+                  </Grid>
+                )
+              }  else if (question["type"] === "shorttext") {
+                return(
+                  <Grid item>
+                    {
+                      //component needs to be created
+                    }
+                  </Grid>
+                )
+              } else if (question["type"] === "longtext") {
+                return(
+                  <Grid item>
+                    {
+                      //component needs to be created
+                    }
+                  </Grid>
+                )
+              } else if (question["type"] === "ranking") {
+                return(
+                  <Grid item>
+                    {
+                      //component needs to be created
+                    }
+                  </Grid>
+                )
+              }
+              return null;
+            })
+          }
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{ margin: 1 }}
+            disabled={isSelected()}
+            onClick={
+              async () => {
+                let responseList: Array<Number> = [];
+                audioListState[tracking].forEach((audioelem: object) => {
+                  //@ts-ignore
+                  responseList.push(audioelem['id']);
+                })
+                responseList.push(validatorID);
+                Object.keys(answersToQuestions).forEach((response: String) => {
+                  //@ts-ignore
+                  responseList.push(answersToQuestions[response]);
+                })
+                await sendResponse(responseList);
+                initQuestions();
+                setTracking(tracking+1);
+              }
+            }
+          >
+            Submit
+          </Button>
+        </Grid>
       </Grid>
-    </Grid>
-  );
+    )
+  };
+  // To render when loading audio files
+  return (null);
 }
 
 export default App;

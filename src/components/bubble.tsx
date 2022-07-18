@@ -6,7 +6,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 
-const BubbleQuestion: FC<Bubble> = ({ choice_list, required = true, question_name, handleChange, question_id, value }) => {
+const BubbleQuestion: FC<Bubble> = ({ choice_list, required = true, question_name, handleChange,  value }) => {
 
 
   return (
@@ -20,7 +20,7 @@ const BubbleQuestion: FC<Bubble> = ({ choice_list, required = true, question_nam
         value={value}
         onChange={handleChange}
       >
-        {choice_list.map((choice,idx) => <FormControlLabel key={idx} value={choice} control={<Radio />} label={choice} />)}
+        {choice_list.map((choice,idx) => <FormControlLabel key={idx} value={Object.values(choice)[0]} control={<Radio />} label={Object.keys(choice)[0]} />)}
       </RadioGroup>
     </FormControl>
   );
