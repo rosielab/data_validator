@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import './App.css';
 import BubbleQuestion from "./components/bubble"
 import SliderQuestion from "./components/slider"
-import { Grid, Button, Typography, TextField } from '@mui/material';
+import { Grid, Button, Typography, TextField, Alert } from '@mui/material';
 import AudioCard from './components/audiocard';
 import questionInfo from "./config.json";
 
@@ -51,7 +51,7 @@ function App() {
       const audiolist = await response.json();
       return audiolist;
     }catch (error) {
-      return error;
+      alert(error);
     }
   }
 
@@ -61,7 +61,7 @@ function App() {
       const audiolist = await response.json();
       return audiolist;
     }catch (error) {
-      return error;
+      alert(error);
     }
   }
 
@@ -70,11 +70,11 @@ function App() {
     for (const audioitem of audiolist) {
       try{
         //@ts-ignore
-        const response = await fetch(`http://localhost:4000/file?path=${audioitem['file_name']}`);
+        const response = await fetch(`http://localhost:4000/file?folder=${audioitem['file_name'].replace('.wav','')}&path=${audioitem['chunk_name']}`);
         const audioblob = await response.blob();
         audioFiles.push(audioblob);
       }catch (error) {
-        return error;
+        alert(error);
       }
     }
     return audioFiles;
@@ -94,7 +94,7 @@ function App() {
       const data = await response.json();
       return data;
     } catch (error) {
-      return error;
+      alert(error);
     }
   }
 
@@ -110,10 +110,11 @@ function App() {
           responses
         }),
       })
+      if (!response.ok) throw await response.json();
       const data = await response.json();
       return data;
     } catch (error) {
-      return error;
+      alert("Something went wrong, check console for details");
     }
   }
 
@@ -205,7 +206,7 @@ function App() {
       </Grid>
     );
   }
-  if (!audioListState.length) {
+  if (!audioListState.length || (tracking+1) > audioListState.length) {
     return (
       <div>
         You have completed your audio validation!

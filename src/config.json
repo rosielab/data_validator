@@ -12,7 +12,7 @@
       "type": "bubble",
       "data": {
         "question_name": "Loudness validation",
-        "choice_list": [{"Speaking": 1}, {"Shouting": 2}, {"Screaming": 3}],
+        "choice_list": [{"Shouting": 2}, {"Not Shouting": 1}],
         "required": true
       }
     },
